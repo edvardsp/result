@@ -2,9 +2,9 @@
 
 #include <exception>
 #include <functional>
-#include <string>
-#include <type_traits>
 #include <optional>
+#include <string_view>
+#include <type_traits>
 #include <variant>
 
 namespace details {
@@ -46,8 +46,8 @@ struct Ok : details::OkBase
     T t_;
 
     constexpr Ok(T t) : t_(std::move(t)) {}
-    template<typename T2>
-    constexpr Ok(Ok< T2 > ok) : t_(std::move(ok.t_)) {}
+    template<typename U>
+    constexpr Ok(Ok< U > ok) : t_(std::move(ok.t_)) {}
 };
 
 
@@ -57,8 +57,8 @@ struct Err : details::ErrBase
     E e_;
 
     constexpr Err(E e) : e_(std::move(e)) {}
-    template<typename E2>
-    constexpr Err(Err< E2 > err) : e_(std::move(err.e_)) {}
+    template<typename F>
+    constexpr Err(Err< F > err) : e_(std::move(err.e_)) {}
 };
 
 } /* namespace details */
@@ -89,11 +89,11 @@ class Result : details::ResultBase
     std::variant< OkT, ErrE > variant_;
 
 public:
-    template<typename T2>
-    constexpr Result(details::Ok< T2 > ok) : variant_{ OkT( std::move(ok.t_) ) } {}
+    template<typename U>
+    constexpr Result(details::Ok< U > ok) : variant_{ OkT( std::move(ok.t_) ) } {}
 
-    template<typename E2>
-    constexpr Result(details::Err< E2 > err) : variant_{ ErrE( std::move(err.e_) ) } {}
+    template<typename F>
+    constexpr Result(details::Err< F > err) : variant_{ ErrE( std::move(err.e_) ) } {}
 
     // Make movable
     constexpr Result(Result&&) = default;
@@ -141,15 +141,15 @@ public:
             throw std::logic_error{ "Result::unwrawp_err panicked" };
     }
 
-    template<typename T2>
-    constexpr T unwrap_or(T2&& default_value)
+    template<typename U>
+    constexpr T unwrap_or(U&& default_value)
     {
-        static_assert(details::is_equiv_v< T, T2 >, 
+        static_assert(details::is_equiv_v< T, U >, 
             "Default value type is not equivalent to Ok type");
         if (is_ok())
             return move_t_();
         else
-            return std::forward< T2 >(default_value);
+            return std::forward< U >(default_value);
     }
 
     template<typename Fn>
@@ -171,7 +171,7 @@ public:
             return T();
     }
 
-    constexpr T expect(std::string const& msg)
+    constexpr T expect(std::string_view msg)
     {
         if (is_ok())
             return move_t_();
@@ -179,7 +179,7 @@ public:
             throw std::logic_error( msg );
     }
 
-    constexpr E expect_err(std::string const& msg)
+    constexpr E expect_err(std::string_view msg)
     {
         if (is_err())
             return move_e_();
@@ -301,7 +301,7 @@ private:
     constexpr T move_t_() { return std::move(get_t_()); }
     constexpr E move_e_() { return std::move(get_e_()); }
 
-    template<typename T2, typename E2>
+    template<typename U, typename F>
     friend class Result;
 };
 
